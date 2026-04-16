@@ -1,0 +1,32 @@
+﻿services:
+  warehouse-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: warehouse-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT}:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+
+  warehouse-api:
+    build:
+      context: .
+      dockerfile: WarehouseVisualizer.Api/Dockerfile
+    container_name: warehouse-api
+    depends_on:
+      - warehouse-db
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "0"
+      ConnectionStrings__WarehouseDb: Server=${DB_HOST},1433;Database=${DB_NAME};User Id=${DB_USER};Password=${DB_PASSWORD};TrustServerCertificate=True;Encrypt=False
+      AdminSeed__Username: ${ADMIN_USERNAME}
+      AdminSeed__Password: ${ADMIN_PASSWORD}
+      AdminSeed__FullName: ${ADMIN_FULLNAME}
+    ports:
+      - "${API_PORT}:8080"
+
+volumes:
+  sqlserver-data:
