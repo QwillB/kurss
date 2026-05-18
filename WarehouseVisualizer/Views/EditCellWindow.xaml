@@ -19,15 +19,15 @@
         </ObjectDataProvider>
 
         <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#343A40"/>
+            <Setter Property="Foreground" Value="{StaticResource EnterpriseTextBrush}"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="Margin" Value="0,0,0,4"/>
         </Style>
 
         <Style TargetType="TextBox">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="Foreground" Value="#343A40"/>
-            <Setter Property="BorderBrush" Value="#DEE2E6"/>
+            <Setter Property="Background" Value="#0F172A"/>
+            <Setter Property="Foreground" Value="{StaticResource EnterpriseTextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource EnterpriseBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="8"/>
             <Setter Property="FontSize" Value="13"/>
@@ -36,9 +36,9 @@
         </Style>
 
         <Style TargetType="ComboBox">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="Foreground" Value="#343A40"/>
-            <Setter Property="BorderBrush" Value="#DEE2E6"/>
+            <Setter Property="Background" Value="#0F172A"/>
+            <Setter Property="Foreground" Value="{StaticResource EnterpriseTextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource EnterpriseBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="8,6"/>
             <Setter Property="FontSize" Value="13"/>
@@ -55,9 +55,9 @@
         </Style>
     </Window.Resources>
 
-    <Grid Background="#F8F9FA">
+    <Grid Background="{StaticResource EnterpriseBackgroundBrush}">
         <!-- Основной контейнер -->
-        <Border Margin="16" Background="White" CornerRadius="8">
+        <Border Margin="16" Style="{StaticResource EnterpriseCard}">
             <Border.Effect>
                 <DropShadowEffect ShadowDepth="0" BlurRadius="20"/>
             </Border.Effect>
@@ -71,11 +71,13 @@
 
                 <!-- Заголовок -->
                 <Border Grid.Row="0" 
-                        Background="#4A6FA5" 
+                        Background="{StaticResource EnterpriseSurfaceBrush}" 
+                        BorderBrush="{StaticResource EnterpriseBorderBrush}"
+                        BorderThickness="0,0,0,1"
                         CornerRadius="8,8,0,0" 
                         Padding="16,12">
                     <TextBlock Text="Редактирование материала" 
-                               Foreground="White" 
+                               Foreground="{StaticResource EnterpriseTextBrush}" 
                                FontSize="15" 
                                FontWeight="SemiBold"/>
                 </Border>
@@ -110,48 +112,21 @@
 
                 <!-- Кнопки -->
                 <Border Grid.Row="2" 
-                        Background="#F8F9FA" 
-                        BorderBrush="#E9ECEF" 
+                        Background="{StaticResource EnterpriseSurfaceBrush}" 
+                        BorderBrush="{StaticResource EnterpriseBorderBrush}" 
                         BorderThickness="0,1,0,0"
                         Padding="16,12" 
                         CornerRadius="0,0,8,8">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Content="Сохранить" 
-                                Background="#4A6FA5" 
-                                Foreground="White"
+                                Style="{StaticResource EnterpriseButton}"
                                 Click="SaveButton_Click"
                                 IsDefault="True">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Cursor" Value="Hand"/>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#3A5A90"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
                         </Button>
                         <Button Content="Отмена" 
-                                Background="Transparent" 
-                                Foreground="#6C757D"
-                                BorderBrush="#DEE2E6"
-                                BorderThickness="1"
+                                Style="{StaticResource EnterpriseOutlineButton}"
                                 Margin="8,0,0,0"
-                                IsCancel="True">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Cursor" Value="Hand"/>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#F8F9FA"/>
-                                            <Setter Property="BorderBrush" Value="#4A6FA5"/>
-                                            <Setter Property="Foreground" Value="#4A6FA5"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
+                                IsCancel="True"/>
                     </StackPanel>
                 </Border>
             </Grid>

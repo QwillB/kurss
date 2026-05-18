@@ -15,6 +15,8 @@ namespace WarehouseVisualizer.Models
         private int _quantity;
         private MaterialType _type;
         private string _unit = "шт.";
+        private string _qrCode = string.Empty;
+        private MaterialStatus _status = MaterialStatus.Active;
 
         public string Name
         {
@@ -40,6 +42,21 @@ namespace WarehouseVisualizer.Models
             set { _unit = value; OnPropertyChanged(nameof(Unit)); }
         }
 
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        [MaxLength(128)]
+        public string QrCode
+        {
+            get => string.IsNullOrWhiteSpace(_qrCode) ? $"MAT-{Id}" : _qrCode;
+            set { _qrCode = value; OnPropertyChanged(nameof(QrCode)); }
+        }
+
+        public MaterialStatus Status
+        {
+            get => _status;
+            set { _status = value; OnPropertyChanged(nameof(Status)); }
+        }
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public void OnPropertyChanged(string propertyName)
@@ -55,7 +72,10 @@ namespace WarehouseVisualizer.Models
                 Name = this.Name,
                 Quantity = this.Quantity,
                 Type = this.Type,
-                Unit = this.Unit
+                Unit = this.Unit,
+                CreatedAt = this.CreatedAt,
+                QrCode = this.QrCode,
+                Status = this.Status
             };
         }
     }
@@ -232,6 +252,11 @@ namespace WarehouseVisualizer.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
+        public int? MaterialId { get; set; }
+
+        [ForeignKey(nameof(MaterialId))]
+        public Material? Material { get; set; }
+
         [Required]
         public DateTime Timestamp { get; set; } = DateTime.Now;
 
@@ -239,22 +264,55 @@ namespace WarehouseVisualizer.Models
         [MaxLength(50)]
         public string Action { get; set; } = string.Empty;
 
+        public MaterialHistoryActionType ActionType { get; set; } = MaterialHistoryActionType.Updated;
+
         [MaxLength(20)]
         public string Location { get; set; } = string.Empty;
+
+        [MaxLength(20)]
+        public string FromLocation { get; set; } = string.Empty;
+
+        [MaxLength(20)]
+        public string ToLocation { get; set; } = string.Empty;
 
         [MaxLength(100)]
         public string MaterialName { get; set; } = string.Empty;
 
         public int Quantity { get; set; }
 
+        [MaxLength(100)]
+        public string UserName { get; set; } = string.Empty;
+
+        [MaxLength(250)]
+        public string Reason { get; set; } = string.Empty;
+
+        [MaxLength(500)]
+        public string Comment { get; set; } = string.Empty;
+
         [NotMapped] // Это свойство не будет сохраняться в БД
-        public string Details => $"{Timestamp:HH:mm:ss} | {Action} | {Location} | {MaterialName} x{Quantity}";
+        public string Details
+        {
+            get
+            {
+                var route = !string.IsNullOrWhiteSpace(FromLocation) || !string.IsNullOrWhiteSpace(ToLocation)
+                    ? $"{FromLocation} → {ToLocation}".Trim()
+                    : Location;
+                var user = string.IsNullOrWhiteSpace(UserName) ? "system" : UserName;
+                return $"{Timestamp:dd.MM HH:mm} | {ActionType} | {route} | {MaterialName} x{Quantity} | {user}";
+            }
+        }
     }
 
     public class Notification
     {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int Id { get; set; }
+
         public string Message { get; set; } = string.Empty;
         public NotificationType Type { get; set; }
-        public DateTime Timestamp { get; } = DateTime.Now;
+        public NotificationPriority Priority { get; set; } = NotificationPriority.Medium;
+        public bool IsRead { get; set; }
+        public DateTime Timestamp { get; set; } = DateTime.Now;
     }
 }

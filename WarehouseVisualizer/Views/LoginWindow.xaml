@@ -1,115 +1,123 @@
-﻿<Window x:Class="WarehouseVisualizer.Views.LoginWindow"
+<Window x:Class="WarehouseVisualizer.Views.LoginWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:WarehouseVisualizer"
         xmlns:conv="clr-namespace:WarehouseVisualizer.Converters"
         mc:Ignorable="d"
-        Title="Warehouse Visualizer - Авторизация" 
-        Height="650" Width="500"
+        Title="Интеллектуальная система управления складом - Вход"
+        Height="650"
+        Width="520"
         WindowStartupLocation="CenterScreen"
-        ResizeMode="NoResize"
-        WindowStyle="SingleBorderWindow">
+        ResizeMode="NoResize">
 
     <Window.Resources>
         <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
 
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource EnterpriseTextBrush}"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+
         <Style TargetType="TextBox">
-            <Setter Property="Padding" Value="8"/>
-            <Setter Property="Margin" Value="0,5,0,15"/>
+            <Setter Property="Background" Value="#0F172A"/>
+            <Setter Property="Foreground" Value="{StaticResource EnterpriseTextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource EnterpriseBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,9"/>
+            <Setter Property="Margin" Value="0,6,0,16"/>
             <Setter Property="FontSize" Value="14"/>
         </Style>
 
         <Style TargetType="PasswordBox">
-            <Setter Property="Padding" Value="8"/>
-            <Setter Property="Margin" Value="0,5,0,15"/>
-            <Setter Property="FontSize" Value="14"/>
-        </Style>
-
-        <Style TargetType="Button">
-            <Setter Property="Padding" Value="12,8"/>
-            <Setter Property="Margin" Value="0,10,0,0"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Background" Value="#2196F3"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-
-        <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#333"/>
+            <Setter Property="Background" Value="#0F172A"/>
+            <Setter Property="Foreground" Value="{StaticResource EnterpriseTextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource EnterpriseBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,9"/>
+            <Setter Property="Margin" Value="0,6,0,16"/>
             <Setter Property="FontSize" Value="14"/>
         </Style>
     </Window.Resources>
 
-    <Grid Background="#F5F5F5">
-        <Border Background="White" 
-                CornerRadius="10" 
-                Margin="30"
-                Padding="30"
-                VerticalAlignment="Center">
+    <Grid Background="{StaticResource EnterpriseBackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="1"
+                Style="{StaticResource EnterpriseCard}"
+                Width="430"
+                Padding="28">
             <StackPanel>
-                <!-- Заголовок -->
-                <StackPanel Margin="0,0,0,30">
-                    <TextBlock Text="WAREHOUSE VISUALIZER" 
-                               FontSize="24" 
-                               FontWeight="Bold" 
-                               Foreground="#2196F3"
+                <StackPanel Margin="0,0,0,26">
+                    <TextBlock Text="СКЛАД PRO"
+                               Foreground="{StaticResource EnterpriseAccentBrush}"
+                               FontSize="34"
+                               FontWeight="Bold"
                                HorizontalAlignment="Center"/>
-                    <TextBlock Text="Система управления складом" 
-                               FontSize="14" 
-                               HorizontalAlignment="Center"
-                               Margin="0,5,0,0"
-                               Foreground="#666"/>
+                    <TextBlock Text="Интеллектуальная система управления складом"
+                               Foreground="{StaticResource EnterpriseMutedTextBrush}"
+                               FontSize="14"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               Margin="0,6,0,0"/>
                 </StackPanel>
 
-                <!-- Форма входа -->
-                <TextBlock Text="Вход в систему" 
-                           FontSize="16" 
+                <TextBlock Text="Вход в систему"
+                           FontSize="20"
                            FontWeight="SemiBold"
-                           Margin="0,0,0,20"/>
+                           Margin="0,0,0,18"/>
 
-                <!-- Поле логина -->
-                <TextBlock Text="Логин"/>
-                <TextBox x:Name="UsernameTextBox" 
+                <TextBlock Text="Логин" Foreground="{StaticResource EnterpriseMutedTextBrush}"/>
+                <TextBox x:Name="UsernameTextBox"
                          Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
                          MaxLength="50"/>
 
-                <!-- Поле пароля -->
-                <TextBlock Text="Пароль"/>
-                <PasswordBox x:Name="PasswordBox" 
+                <TextBlock Text="Пароль" Foreground="{StaticResource EnterpriseMutedTextBrush}"/>
+                <PasswordBox x:Name="PasswordBox"
                              PasswordChanged="PasswordBox_PasswordChanged"
                              MaxLength="50"/>
 
-                <!-- Кнопка входа -->
-                <Button Content="Войти" 
+                <Button Content="Войти"
                         Command="{Binding LoginCommand}"
                         IsDefault="True"
-                        Height="45"/>
+                        Height="44"
+                        Style="{StaticResource EnterpriseButton}"
+                        Margin="0,4,0,0"/>
 
-                <!-- Сообщение об ошибке -->
-                <TextBlock Text="{Binding ErrorMessage}" 
-                           Foreground="Red" 
-                           Margin="0,15,0,0"
-                           TextWrapping="Wrap"
-                           HorizontalAlignment="Center"
-                           Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                <Border Background="#2A1420"
+                        BorderBrush="{StaticResource EnterpriseRedBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="10"
+                        Margin="0,16,0,0"
+                        Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Text="{Binding ErrorMessage}"
+                               Foreground="#FCA5A5"
+                               TextWrapping="Wrap"/>
+                </Border>
 
-                <!-- Информация о демо-доступе -->
-                <Border Background="#E3F2FD" 
-                        CornerRadius="5" 
-                        Padding="10" 
+                <Border Background="#101827"
+                        BorderBrush="#27364F"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="12"
                         Margin="0,20,0,0">
                     <StackPanel>
-                        <TextBlock Text="Демо-доступ:" 
-                                   FontWeight="Bold" 
-                                   Foreground="#1565C0"/>
-                        <TextBlock Text="admin / 123456" 
-                                   Margin="0,5,0,0"/>
-                        <TextBlock Text="storekeeper1 / 123456" 
+                        <TextBlock Text="Демо-доступ"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource EnterpriseAccentBrush}"/>
+                        <TextBlock Text="admin / 123"
+                                   Foreground="{StaticResource EnterpriseMutedTextBrush}"
+                                   Margin="0,6,0,0"/>
+                        <TextBlock Text="storekeeper1 / 123456"
+                                   Foreground="{StaticResource EnterpriseMutedTextBrush}"
                                    Margin="0,2,0,0"/>
-                        <TextBlock Text="auditor1 / 123456" 
+                        <TextBlock Text="auditor1 / 123456"
+                                   Foreground="{StaticResource EnterpriseMutedTextBrush}"
                                    Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>

@@ -87,7 +87,10 @@ namespace WarehouseVisualizer.Services
                                 Name = cell.Material.Name,
                                 Type = cell.Material.Type,
                                 Quantity = cell.Material.Quantity,
-                                Unit = cell.Material.Unit
+                                Unit = cell.Material.Unit,
+                                CreatedAt = cell.Material.CreatedAt,
+                                QrCode = cell.Material.QrCode,
+                                Status = cell.Material.Status
                             };
                             context.Materials.Add(dbMaterial);
                             context.SaveChanges();
@@ -222,10 +225,17 @@ namespace WarehouseVisualizer.Services
                 var dbItem = new MaterialHistoryItem
                 {
                     Action = historyItem.Action ?? string.Empty,
+                    ActionType = historyItem.ActionType,
+                    MaterialId = historyItem.MaterialId,
                     Location = historyItem.Location ?? string.Empty,
+                    FromLocation = historyItem.FromLocation ?? string.Empty,
+                    ToLocation = historyItem.ToLocation ?? string.Empty,
                     MaterialName = historyItem.MaterialName ?? string.Empty,
                     Quantity = historyItem.Quantity,
-                    Timestamp = historyItem.Timestamp
+                    Timestamp = historyItem.Timestamp,
+                    UserName = historyItem.UserName ?? string.Empty,
+                    Reason = historyItem.Reason ?? string.Empty,
+                    Comment = historyItem.Comment ?? string.Empty
                 };
 
                 context.OperationHistory.Add(dbItem);
@@ -265,6 +275,9 @@ namespace WarehouseVisualizer.Services
                     dbMaterial.Type = material.Type;
                     dbMaterial.Quantity = material.Quantity;
                     dbMaterial.Unit = material.Unit;
+                    dbMaterial.CreatedAt = material.CreatedAt;
+                    dbMaterial.QrCode = material.QrCode;
+                    dbMaterial.Status = material.Status;
                     context.Materials.Update(dbMaterial);
 
                     // Сохраняем ID обратно в исходный объект

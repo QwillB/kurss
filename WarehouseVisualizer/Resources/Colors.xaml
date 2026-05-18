@@ -1,0 +1,15 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="EnterpriseBackgroundBrush" Color="#0F172A"/>
+    <SolidColorBrush x:Key="EnterpriseSurfaceBrush" Color="#111827"/>
+    <SolidColorBrush x:Key="EnterprisePanelBrush" Color="#172033"/>
+    <SolidColorBrush x:Key="EnterpriseCardBrush" Color="#1E293B"/>
+    <SolidColorBrush x:Key="EnterpriseBorderBrush" Color="#334155"/>
+    <SolidColorBrush x:Key="EnterpriseTextBrush" Color="#E5E7EB"/>
+    <SolidColorBrush x:Key="EnterpriseMutedTextBrush" Color="#94A3B8"/>
+    <SolidColorBrush x:Key="EnterpriseAccentBrush" Color="#38BDF8"/>
+    <SolidColorBrush x:Key="EnterpriseGreenBrush" Color="#22C55E"/>
+    <SolidColorBrush x:Key="EnterpriseAmberBrush" Color="#F59E0B"/>
+    <SolidColorBrush x:Key="EnterpriseRedBrush" Color="#EF4444"/>
+    <SolidColorBrush x:Key="EnterprisePurpleBrush" Color="#A78BFA"/>
+</ResourceDictionary>

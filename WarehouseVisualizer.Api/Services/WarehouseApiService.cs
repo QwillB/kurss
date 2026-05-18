@@ -98,7 +98,10 @@ public sealed class WarehouseApiService
                         Name = cell.Material.Name,
                         Type = cell.Material.Type,
                         Quantity = cell.Material.Quantity,
-                        Unit = cell.Material.Unit
+                        Unit = cell.Material.Unit,
+                        CreatedAt = cell.Material.CreatedAt,
+                        QrCode = cell.Material.QrCode,
+                        Status = cell.Material.Status
                     };
 
                     _context.Materials.Add(dbMaterial);
@@ -110,6 +113,9 @@ public sealed class WarehouseApiService
                     dbMaterial.Type = cell.Material.Type;
                     dbMaterial.Quantity = cell.Material.Quantity;
                     dbMaterial.Unit = cell.Material.Unit;
+                    dbMaterial.CreatedAt = cell.Material.CreatedAt;
+                    dbMaterial.QrCode = cell.Material.QrCode;
+                    dbMaterial.Status = cell.Material.Status;
                 }
 
                 newCell.MaterialId = dbMaterial.Id;

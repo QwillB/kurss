@@ -1,24 +1,34 @@
-﻿<Window x:Class="WarehouseVisualizer.Views.NotificationWindow"
+<Window x:Class="WarehouseVisualizer.Views.NotificationWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Уведомление" 
-        Height="150" 
-        Width="400"
+        Title="Уведомление"
+        Height="180"
+        Width="430"
         WindowStartupLocation="CenterOwner"
-        WindowStyle="ToolWindow">
-    <Grid Margin="10">
-        <TextBlock x:Name="MessageTextBlock" 
-                   TextWrapping="Wrap"
-                   VerticalAlignment="Center"
-                   HorizontalAlignment="Center"
-                   TextAlignment="Center"
-                   FontSize="14"/>
-        <Button Content="OK" 
-                Width="80" 
-                Height="25" 
-                HorizontalAlignment="Center" 
-                VerticalAlignment="Bottom"
-                Margin="0,10"
-                Click="OKButton_Click"/>
+        ResizeMode="NoResize">
+    <Grid Background="{StaticResource EnterpriseBackgroundBrush}">
+        <Border Style="{StaticResource EnterpriseCard}" Margin="14">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock x:Name="MessageTextBlock"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           FontSize="14"
+                           Foreground="{StaticResource EnterpriseTextBrush}"/>
+                <Button Grid.Row="1"
+                        Content="ОК"
+                        Width="90"
+                        Height="32"
+                        HorizontalAlignment="Center"
+                        Margin="0,14,0,0"
+                        Style="{StaticResource EnterpriseButton}"
+                        Click="OKButton_Click"/>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

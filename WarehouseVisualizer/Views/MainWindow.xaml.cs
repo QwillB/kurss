@@ -42,6 +42,11 @@ namespace WarehouseVisualizer.Views
         // Обработчик начала перетаскивания из списка материалов
         private void MaterialsList_PreviewMouseMove(object sender, MouseEventArgs e)
         {
+            if (e.RightButton == MouseButtonState.Pressed)
+            {
+                return;
+            }
+
             if (e.LeftButton == MouseButtonState.Pressed)
             {
                 ListBox? listBox = sender as ListBox;
@@ -103,11 +108,23 @@ namespace WarehouseVisualizer.Views
             if (element == null) return;
 
             WarehouseCell? cell = element.DataContext as WarehouseCell;
-            if (cell == null || cell.Material == null) return;
+            if (cell == null) return;
 
             var viewModel = (WarehouseViewModel)DataContext;
             if (viewModel != null)
             {
+                viewModel.SelectedCell = cell;
+
+                if (cell.Material == null)
+                {
+                    if (viewModel.SelectedMaterial != null)
+                    {
+                        viewModel.DropOnCellCommand?.Execute(cell);
+                    }
+
+                    return;
+                }
+
                 viewModel.StartDragCommand?.Execute(cell);
 
                 // Передаем саму ячейку для перемещения
@@ -135,6 +152,7 @@ namespace WarehouseVisualizer.Views
                 if (viewModel != null)
                 {
                     viewModel.SelectedMaterial = material;
+                    viewModel.ActivePage = "Карта склада";
                     WeakReferenceMessenger.Default.Send(new VmNotificationMessage(
                         $"Выбран материал '{material.Name}'. Нажмите на ячейку склада для размещения."));
                 }

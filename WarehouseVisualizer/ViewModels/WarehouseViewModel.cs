@@ -13,6 +13,8 @@ using WarehouseVisualizer.Services;
 using WarehouseVisualizer.Views;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Windows.Data;
+using System.Windows.Threading;
 
 namespace WarehouseVisualizer.ViewModels
 {
@@ -20,6 +22,9 @@ namespace WarehouseVisualizer.ViewModels
     {
         private readonly SqlDataService _sqlDataService = new SqlDataService();
         private readonly IAuthService _authService = new AuthService();
+        private readonly DispatcherTimer _clockTimer = new DispatcherTimer();
+        private readonly DispatcherTimer _simulationTimer = new DispatcherTimer();
+        private readonly Random _random = new Random();
 
         [ObservableProperty]
         private Warehouse _warehouse = new Warehouse { Rows = 8, Columns = 8 };
@@ -32,6 +37,66 @@ namespace WarehouseVisualizer.ViewModels
 
         [ObservableProperty]
         private ObservableCollection<Notification> _notifications = new ObservableCollection<Notification>();
+
+        [ObservableProperty]
+        private ObservableCollection<ActivityEvent> _activityFeed = new ObservableCollection<ActivityEvent>();
+
+        [ObservableProperty]
+        private ObservableCollection<QrPixel> _selectedQrPixels = new ObservableCollection<QrPixel>();
+
+        [ObservableProperty]
+        private string _materialSearchText = string.Empty;
+
+        [ObservableProperty]
+        private bool _showOnlyLowStock;
+
+        [ObservableProperty]
+        private string _activePage = "Карта склада";
+
+        [ObservableProperty]
+        private string _currentTimeText = DateTime.Now.ToString("HH:mm:ss");
+
+        [ObservableProperty]
+        private bool _isHeatmapEnabled = true;
+
+        [ObservableProperty]
+        private string _heatmapMode = "Заполненность";
+
+        [ObservableProperty]
+        private double _heatmapOpacity = 0.45;
+
+        [ObservableProperty]
+        private double _mapZoom = 1.0;
+
+        [ObservableProperty]
+        private WarehouseCell? _suggestedCell;
+
+        [ObservableProperty]
+        private int _smartPlacementScore;
+
+        [ObservableProperty]
+        private string _smartPlacementReason = "Выберите материал и нажмите «Найти лучшую ячейку».";
+
+        [ObservableProperty]
+        private bool _hasPlacementSuggestion;
+
+        [ObservableProperty]
+        private bool _isSimulationRunning;
+
+        [ObservableProperty]
+        private int _simulationSpeed = 2;
+
+        [ObservableProperty]
+        private int _simulationEventsCount;
+
+        [ObservableProperty]
+        private string _forecastMessage = "Прогноз склада стабильный.";
+
+        [ObservableProperty]
+        private int _forecastRiskPercent = 28;
+
+        [ObservableProperty]
+        private int _activeUsersCount = 1;
 
         [ObservableProperty]
         private ObservableCollection<MaterialReportItem> _reportItems = new ObservableCollection<MaterialReportItem>();
@@ -145,6 +210,57 @@ namespace WarehouseVisualizer.ViewModels
         [ObservableProperty]
         private RelayCommand? _refreshReportCommand;
 
+        [ObservableProperty]
+        private RelayCommand? _resetMaterialFilterCommand;
+
+        [ObservableProperty]
+        private RelayCommand<Notification>? _markNotificationAsReadCommand;
+
+        [ObservableProperty]
+        private RelayCommand? _markAllNotificationsAsReadCommand;
+
+        [ObservableProperty]
+        private RelayCommand<string>? _navigateCommand;
+
+        [ObservableProperty]
+        private RelayCommand? _zoomInCommand;
+
+        [ObservableProperty]
+        private RelayCommand? _zoomOutCommand;
+
+        [ObservableProperty]
+        private RelayCommand? _resetMapViewCommand;
+
+        [ObservableProperty]
+        private RelayCommand? _findBestCellCommand;
+
+        [ObservableProperty]
+        private RelayCommand? _confirmPlacementCommand;
+
+        [ObservableProperty]
+        private RelayCommand? _rejectPlacementCommand;
+
+        [ObservableProperty]
+        private RelayCommand? _findAlternativeCommand;
+
+        [ObservableProperty]
+        private RelayCommand? _toggleSimulationCommand;
+
+        [ObservableProperty]
+        private RelayCommand? _generateDemoDataCommand;
+
+        [ObservableProperty]
+        private RelayCommand? _generateQrCommand;
+
+        [ObservableProperty]
+        private RelayCommand? _createBackupCommand;
+
+        [ObservableProperty]
+        private RelayCommand? _restoreBackupCommand;
+
+        [ObservableProperty]
+        private RelayCommand? _deleteOldBackupCommand;
+
         // Новые команды для управления пользователями
         [ObservableProperty]
         private ObservableCollection<User> _users = new ObservableCollection<User>();
@@ -182,11 +298,32 @@ namespace WarehouseVisualizer.ViewModels
         // Свойство для общего количества ячеек
         public int TotalCellsCount => (Warehouse?.Rows ?? 0) * (Warehouse?.Columns ?? 0);
 
+        public int FreeCellsCount => Math.Max(0, TotalCellsCount - OccupiedCellsCount);
+
+        public int LowStockMaterialsCount => AvailableMaterials.Count(m => m.Quantity <= 5);
+
+        public int UnreadNotificationsCount => Notifications.Count(n => !n.IsRead);
+
+        public int DailyOperationsCount => History.Count(h => h.Timestamp.Date == DateTime.Now.Date);
+
+        public int MonthlyOperationsCount => History.Count(h => h.Timestamp >= DateTime.Now.Date.AddDays(-30));
+
+        public string SelectedCellLocation => SelectedCell?.Location ?? "Ячейка не выбрана";
+
+        public Material? DetailsMaterial => SelectedCell?.Material ?? SelectedMaterial;
+
+        public string SelectedQrCodeText => DetailsMaterial?.QrCode
+            ?? (SelectedCell != null ? $"CELL-{SelectedCell.Location}" : "QR не выбран");
+
         public WarehouseViewModel()
         {
             // Инициализация для дизайнера
             InitializeCommands();
+            InitializeTimers();
             InitializeTestData();
+            ConfigureMaterialFilter();
+            BuildActivityFeed();
+            UpdateForecast();
         }
 
         public WarehouseViewModel(User user)
@@ -216,9 +353,14 @@ namespace WarehouseVisualizer.ViewModels
             _selectedMaterial = _availableMaterials.FirstOrDefault();
 
             InitializeCommands();
+            InitializeTimers();
+            ConfigureMaterialFilter();
             InitializeMessenger();
             LoadHistory();
             GenerateReport();
+            BuildActivityFeed();
+            UpdateQrPreview();
+            UpdateForecast();
         }
 
         private void InitializeDefaultMaterials()
@@ -278,12 +420,39 @@ namespace WarehouseVisualizer.ViewModels
             StartMaterialDragCommand = new RelayCommand<Material>(StartMaterialDrag);
             GenerateMaterialReportCommand = new RelayCommand<Material>(GenerateMaterialReport, CanGenerateMaterialReport);
             RefreshReportCommand = new RelayCommand(GenerateReport, CanGenerateReport);
+            ResetMaterialFilterCommand = new RelayCommand(ResetMaterialFilter);
+            MarkNotificationAsReadCommand = new RelayCommand<Notification>(MarkNotificationAsRead, n => n != null && !n.IsRead);
+            MarkAllNotificationsAsReadCommand = new RelayCommand(MarkAllNotificationsAsRead);
+            NavigateCommand = new RelayCommand<string>(Navigate);
+            ZoomInCommand = new RelayCommand(() => MapZoom = Math.Min(1.6, MapZoom + 0.1));
+            ZoomOutCommand = new RelayCommand(() => MapZoom = Math.Max(0.7, MapZoom - 0.1));
+            ResetMapViewCommand = new RelayCommand(() => MapZoom = 1.0);
+            FindBestCellCommand = new RelayCommand(FindBestCell);
+            ConfirmPlacementCommand = new RelayCommand(ConfirmPlacement, () => HasPlacementSuggestion);
+            RejectPlacementCommand = new RelayCommand(RejectPlacement, () => HasPlacementSuggestion);
+            FindAlternativeCommand = new RelayCommand(FindBestCell);
+            ToggleSimulationCommand = new RelayCommand(ToggleSimulation);
+            GenerateDemoDataCommand = new RelayCommand(GenerateDemoData);
+            GenerateQrCommand = new RelayCommand(GenerateQrPreview);
+            CreateBackupCommand = new RelayCommand(CreateBackup);
+            RestoreBackupCommand = new RelayCommand(RestoreBackup);
+            DeleteOldBackupCommand = new RelayCommand(DeleteOldBackup);
 
             // Команды для управления пользователями
             AddUserCommand = new RelayCommand(AddUser, () => IsAdmin);
             EditUserCommand = new RelayCommand<User>(EditUser, user => IsAdmin && user != null);
             DeleteUserCommand = new RelayCommand<User>(DeleteUser, user => IsAdmin && user != null);
             OpenUserManagementCommand = new RelayCommand(OpenUserManagement, () => IsAdmin);
+        }
+
+        private void InitializeTimers()
+        {
+            _clockTimer.Interval = TimeSpan.FromSeconds(1);
+            _clockTimer.Tick += (_, _) => CurrentTimeText = DateTime.Now.ToString("HH:mm:ss");
+            _clockTimer.Start();
+
+            _simulationTimer.Interval = TimeSpan.FromSeconds(Math.Max(1, SimulationSpeed));
+            _simulationTimer.Tick += (_, _) => GenerateSimulationEvent();
         }
 
         // В конструкторе WarehouseViewModel добавьте или обновите обработчик:
@@ -312,7 +481,481 @@ namespace WarehouseVisualizer.ViewModels
                 }
 
                 OnPropertyChanged(nameof(OccupiedCellsCount));
+                OnPropertyChanged(nameof(UnreadNotificationsCount));
             });
+        }
+
+        partial void OnMaterialSearchTextChanged(string value)
+        {
+            RefreshMaterialFilter();
+        }
+
+        partial void OnShowOnlyLowStockChanged(bool value)
+        {
+            RefreshMaterialFilter();
+        }
+
+        partial void OnSelectedMaterialChanged(Material? value)
+        {
+            UpdateQrPreview();
+            OnPropertyChanged(nameof(DetailsMaterial));
+            OnPropertyChanged(nameof(SelectedQrCodeText));
+        }
+
+        partial void OnSelectedCellChanged(WarehouseCell? value)
+        {
+            UpdateQrPreview();
+            OnPropertyChanged(nameof(SelectedCellLocation));
+            OnPropertyChanged(nameof(DetailsMaterial));
+            OnPropertyChanged(nameof(SelectedQrCodeText));
+        }
+
+        partial void OnSimulationSpeedChanged(int value)
+        {
+            _simulationTimer.Interval = TimeSpan.FromSeconds(Math.Max(1, value));
+        }
+
+        private void Navigate(string? page)
+        {
+            if (!string.IsNullOrWhiteSpace(page))
+            {
+                ActivePage = page;
+            }
+        }
+
+        private void RefreshMaterialFilter()
+        {
+            CollectionViewSource.GetDefaultView(AvailableMaterials)?.Refresh();
+        }
+
+        private void ConfigureMaterialFilter()
+        {
+            var view = CollectionViewSource.GetDefaultView(AvailableMaterials);
+            if (view == null)
+            {
+                return;
+            }
+
+            view.Filter = item =>
+            {
+                if (item is not Material material)
+                {
+                    return false;
+                }
+
+                if (ShowOnlyLowStock && material.Quantity > 5)
+                {
+                    return false;
+                }
+
+                if (string.IsNullOrWhiteSpace(MaterialSearchText))
+                {
+                    return true;
+                }
+
+                var search = MaterialSearchText.Trim();
+                return material.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    || material.Type.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)
+                    || material.Unit.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    || material.Status.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)
+                    || material.QrCode.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    || material.Id.ToString().Contains(search, StringComparison.OrdinalIgnoreCase);
+            };
+        }
+
+        private void ResetMaterialFilter()
+        {
+            MaterialSearchText = string.Empty;
+            ShowOnlyLowStock = false;
+            RefreshMaterialFilter();
+        }
+
+        private void MarkNotificationAsRead(Notification? notification)
+        {
+            if (notification == null)
+            {
+                return;
+            }
+
+            var index = Notifications.IndexOf(notification);
+            var readNotification = new Notification
+            {
+                Id = notification.Id,
+                Message = notification.Message,
+                Type = notification.Type,
+                Priority = notification.Priority,
+                Timestamp = notification.Timestamp,
+                IsRead = true
+            };
+
+            if (index >= 0)
+            {
+                Notifications[index] = readNotification;
+            }
+            else
+            {
+                notification.IsRead = true;
+            }
+
+            OnPropertyChanged(nameof(UnreadNotificationsCount));
+            MarkNotificationAsReadCommand?.NotifyCanExecuteChanged();
+        }
+
+        private void MarkAllNotificationsAsRead()
+        {
+            for (var i = 0; i < Notifications.Count; i++)
+            {
+                var notification = Notifications[i];
+                Notifications[i] = new Notification
+                {
+                    Id = notification.Id,
+                    Message = notification.Message,
+                    Type = notification.Type,
+                    Priority = notification.Priority,
+                    Timestamp = notification.Timestamp,
+                    IsRead = true
+                };
+            }
+
+            StatusMessage = "Все уведомления отмечены как прочитанные.";
+            OnPropertyChanged(nameof(UnreadNotificationsCount));
+            MarkNotificationAsReadCommand?.NotifyCanExecuteChanged();
+        }
+
+        private void FindBestCell()
+        {
+            var material = SelectedMaterial ?? SelectedCell?.Material;
+            if (material == null && AvailableMaterials.Any())
+            {
+                material = AvailableMaterials.First();
+                SelectedMaterial = material;
+            }
+
+            if (material == null)
+            {
+                SmartPlacementReason = "Выберите материал перед автоматическим подбором ячейки.";
+                return;
+            }
+
+            var freeCells = Warehouse.Cells.Where(c => !c.HasMaterial).ToList();
+            if (!freeCells.Any())
+            {
+                SmartPlacementReason = "Свободных ячеек нет. Прогноз заполненности критический.";
+                SmartPlacementScore = 0;
+                HasPlacementSuggestion = false;
+                return;
+            }
+
+            var best = freeCells
+                .Select(cell => new
+                {
+                    Cell = cell,
+                    Score = ScoreCellForMaterial(cell, material)
+                })
+                .OrderByDescending(x => x.Score)
+                .ThenBy(x => x.Cell.Row)
+                .ThenBy(x => x.Cell.Column)
+                .First();
+
+            SuggestedCell = best.Cell;
+            SmartPlacementScore = best.Score;
+            SmartPlacementReason = $"Лучшая ячейка: {best.Cell.Location}. Учтены совместимость категории, баланс свободного пространства и низкая нагрузка зоны для типа {material.Type}.";
+            HasPlacementSuggestion = true;
+            ConfirmPlacementCommand?.NotifyCanExecuteChanged();
+            RejectPlacementCommand?.NotifyCanExecuteChanged();
+        }
+
+        private int ScoreCellForMaterial(WarehouseCell cell, Material material)
+        {
+            var score = 45;
+            var neighbors = Warehouse.Cells
+                .Where(c => c.HasMaterial && c.Material != null)
+                .Select(c => new
+                {
+                    Cell = c,
+                    Distance = Math.Abs(c.Row - cell.Row) + Math.Abs(c.Column - cell.Column)
+                })
+                .Where(x => x.Distance <= 3)
+                .ToList();
+
+            score += neighbors.Count(x => x.Cell.Material!.Type == material.Type) * 12;
+            score += Math.Max(0, 18 - neighbors.Count * 3);
+            score += cell.Row <= Warehouse.Rows / 2 ? 8 : 4;
+
+            var movementPressure = History.Count(h => h.ToLocation == cell.Location || h.FromLocation == cell.Location);
+            score -= Math.Min(20, movementPressure * 2);
+
+            return Math.Clamp(score, 15, 98);
+        }
+
+        private void ConfirmPlacement()
+        {
+            var material = SelectedMaterial ?? SelectedCell?.Material;
+            if (SuggestedCell == null || material == null)
+            {
+                return;
+            }
+
+            if (SuggestedCell.HasMaterial)
+            {
+                SmartPlacementReason = "Предложенная ячейка уже занята. Запустите поиск альтернативы.";
+                return;
+            }
+
+            if (SelectedCell?.Material?.Id == material.Id)
+            {
+                SelectedCell.Material = null;
+            }
+
+            SuggestedCell.Material = (Material)material.Clone();
+            SuggestedCell.Material.Quantity = Math.Max(1, SelectedQuantity);
+            AddHistory("Авторазмещение", SuggestedCell.Location, material.Name, material.Quantity, string.Empty, SuggestedCell.Location);
+            Notifications.Insert(0, new Notification
+            {
+                Message = $"Авторазмещение подтверждено: {material.Name}, ячейка {SuggestedCell.Location}",
+                Type = NotificationType.PlacementSuggestion,
+                Priority = NotificationPriority.Medium,
+                Timestamp = DateTime.Now
+            });
+            ActivityFeed.Insert(0, new ActivityEvent(DateTime.Now, CurrentUser?.Username ?? "system", "подтвердил авторазмещение", material.Name, SuggestedCell.Location, "ИИ"));
+            RejectPlacement();
+            SelectedCell = SuggestedCell;
+            GenerateReport();
+            OnPropertyChanged(nameof(OccupiedCellsCount));
+        }
+
+        private void RejectPlacement()
+        {
+            SuggestedCell = null;
+            HasPlacementSuggestion = false;
+            SmartPlacementScore = 0;
+            SmartPlacementReason = "Предложение очищено. Нажмите «Найти лучшую ячейку», чтобы рассчитать новую рекомендацию.";
+            ConfirmPlacementCommand?.NotifyCanExecuteChanged();
+            RejectPlacementCommand?.NotifyCanExecuteChanged();
+        }
+
+        private void ToggleSimulation()
+        {
+            IsSimulationRunning = !IsSimulationRunning;
+            if (IsSimulationRunning)
+            {
+                _simulationTimer.Start();
+                StatusMessage = "Режим симуляции запущен: сгенерированные события хранятся только в памяти.";
+            }
+            else
+            {
+                _simulationTimer.Stop();
+                StatusMessage = "Режим симуляции остановлен.";
+            }
+        }
+
+        private void GenerateSimulationEvent()
+        {
+            var material = AvailableMaterials.OrderBy(_ => _random.Next()).FirstOrDefault();
+            if (material == null)
+            {
+                return;
+            }
+
+            var eventTypes = new[] { "перемещён", "обновлён", "риск низкого остатка", "предложение размещения", "отчёт сформирован" };
+            var action = eventTypes[_random.Next(eventTypes.Length)];
+            var location = Warehouse.Cells.OrderBy(_ => _random.Next()).FirstOrDefault()?.Location ?? "Н/Д";
+
+            SimulationEventsCount++;
+            ActivityFeed.Insert(0, new ActivityEvent(DateTime.Now, $"оператор-{_random.Next(1, 5)}", action, material.Name, location, action.Contains("низкого") ? "Высокий" : "Онлайн"));
+            Notifications.Insert(0, new Notification
+            {
+                Message = $"Симуляция: {material.Name} — {action}, ячейка {location}",
+                Type = action.Contains("низкого") ? NotificationType.LowStock : NotificationType.SystemWarning,
+                Priority = action.Contains("низкого") ? NotificationPriority.High : NotificationPriority.Low,
+                Timestamp = DateTime.Now
+            });
+
+            if (ActivityFeed.Count > 60)
+            {
+                ActivityFeed.RemoveAt(ActivityFeed.Count - 1);
+            }
+
+            OnPropertyChanged(nameof(UnreadNotificationsCount));
+        }
+
+        private void GenerateDemoData()
+        {
+            if (!AvailableMaterials.Any())
+            {
+                InitializeDefaultMaterials();
+            }
+
+            foreach (var cell in Warehouse.Cells.Where(c => !c.HasMaterial).Take(12))
+            {
+                var material = AvailableMaterials.OrderBy(_ => _random.Next()).FirstOrDefault();
+                if (material != null)
+                {
+                    cell.Material = (Material)material.Clone();
+                }
+            }
+
+            for (var i = 0; i < 12; i++)
+            {
+                GenerateSimulationEvent();
+            }
+
+            GenerateReport();
+            UpdateForecast();
+            StatusMessage = "Демо-данные созданы для режима защиты.";
+        }
+
+        private void BuildActivityFeed()
+        {
+            ActivityFeed.Clear();
+            foreach (var item in History.Take(30))
+            {
+                ActivityFeed.Add(new ActivityEvent(
+                    item.Timestamp,
+                    string.IsNullOrWhiteSpace(item.UserName) ? "система" : item.UserName,
+                    item.ActionType.ToString(),
+                    item.MaterialName,
+                    string.IsNullOrWhiteSpace(item.ToLocation) ? item.Location : item.ToLocation,
+                    "Аудит"));
+            }
+        }
+
+        private void UpdateQrPreview()
+        {
+            var material = DetailsMaterial;
+            var seed = material?.QrCode ?? material?.Name ?? SelectedCell?.Location ?? "СКЛАД";
+            var pixels = BuildQrPixels(seed);
+
+            SelectedQrPixels.Clear();
+            foreach (var pixel in pixels)
+            {
+                SelectedQrPixels.Add(pixel);
+            }
+        }
+
+        private void GenerateQrPreview()
+        {
+            var material = DetailsMaterial;
+            if (material != null && string.IsNullOrWhiteSpace(material.QrCode))
+            {
+                material.QrCode = $"MAT-{material.Id}-{DateTime.Now:yyyyMMddHHmmss}";
+            }
+
+            UpdateQrPreview();
+            OnPropertyChanged(nameof(SelectedQrCodeText));
+            StatusMessage = material != null
+                ? $"QR-этикетка обновлена для материала «{material.Name}»."
+                : $"QR-этикетка обновлена для ячейки {SelectedCellLocation}.";
+
+            Notifications.Insert(0, new Notification
+            {
+                Message = StatusMessage,
+                Type = NotificationType.Info,
+                Priority = NotificationPriority.Low,
+                Timestamp = DateTime.Now
+            });
+            OnPropertyChanged(nameof(UnreadNotificationsCount));
+        }
+
+        private void CreateBackup()
+        {
+            var backupDirectory = Path.Combine(AppContext.BaseDirectory, "Backups");
+            Directory.CreateDirectory(backupDirectory);
+
+            var fileName = $"warehouse_backup_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
+            var path = Path.Combine(backupDirectory, fileName);
+            File.WriteAllText(path,
+                $"Резервная копия склада{Environment.NewLine}" +
+                $"Дата: {DateTime.Now:dd.MM.yyyy HH:mm:ss}{Environment.NewLine}" +
+                $"Материалов: {AvailableMaterials.Count}{Environment.NewLine}" +
+                $"Ячеек всего: {TotalCellsCount}{Environment.NewLine}" +
+                $"Занято: {OccupiedCellsCount}{Environment.NewLine}" +
+                $"Заполненность: {WarehouseReport.OccupancyPercentage:F1}%");
+
+            Notifications.Insert(0, new Notification
+            {
+                Message = $"Резервная копия создана: {fileName}",
+                Type = NotificationType.BackupCompleted,
+                Priority = NotificationPriority.Medium,
+                Timestamp = DateTime.Now
+            });
+
+            StatusMessage = $"Резервная копия создана: {path}";
+            OnPropertyChanged(nameof(UnreadNotificationsCount));
+        }
+
+        private void RestoreBackup()
+        {
+            var result = MessageBox.Show(
+                "Восстановление может заменить текущее состояние склада. В этой версии выполняется безопасная демонстрационная проверка без изменения данных. Продолжить?",
+                "Подтверждение восстановления",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes)
+            {
+                StatusMessage = "Восстановление отменено пользователем.";
+                return;
+            }
+
+            StatusMessage = "Проверка восстановления выполнена в безопасном режиме. Реальные данные не изменены.";
+            Notifications.Insert(0, new Notification
+            {
+                Message = "Проверка восстановления backup выполнена в безопасном режиме.",
+                Type = NotificationType.SystemWarning,
+                Priority = NotificationPriority.Low,
+                Timestamp = DateTime.Now
+            });
+            OnPropertyChanged(nameof(UnreadNotificationsCount));
+        }
+
+        private void DeleteOldBackup()
+        {
+            var backupDirectory = Path.Combine(AppContext.BaseDirectory, "Backups");
+            if (!Directory.Exists(backupDirectory))
+            {
+                StatusMessage = "Папка резервных копий пока пуста.";
+                return;
+            }
+
+            var oldestBackup = new DirectoryInfo(backupDirectory)
+                .GetFiles("warehouse_backup_*.txt")
+                .OrderBy(f => f.CreationTime)
+                .FirstOrDefault();
+
+            if (oldestBackup == null)
+            {
+                StatusMessage = "Файлы резервных копий не найдены.";
+                return;
+            }
+
+            oldestBackup.Delete();
+            StatusMessage = $"Удалена старая резервная копия: {oldestBackup.Name}";
+        }
+
+        private static IEnumerable<QrPixel> BuildQrPixels(string seed)
+        {
+            var hash = seed.Aggregate(17, (current, ch) => current * 31 + ch);
+            for (var row = 0; row < 15; row++)
+            {
+                for (var col = 0; col < 15; col++)
+                {
+                    var finder = (row < 4 && col < 4) || (row < 4 && col > 10) || (row > 10 && col < 4);
+                    var value = finder || ((row * 23 + col * 19 + hash) % 7 < 3);
+                    yield return new QrPixel(value);
+                }
+            }
+        }
+
+        private void UpdateForecast()
+        {
+            var occupancy = WarehouseReport.OccupancyPercentage;
+            ForecastRiskPercent = (int)Math.Clamp(occupancy + LowStockMaterialsCount * 4 + DailyOperationsCount, 12, 96);
+            ForecastMessage = ForecastRiskPercent > 75
+                ? "Высокий риск перегрузки. Рекомендуется перераспределить зоны и проверить входящие поставки."
+                : ForecastRiskPercent > 45
+                    ? "Ожидается умеренный рост нагрузки. Авторазмещение поможет снизить перегрузку."
+                    : "Ёмкость стабильна. Перегрузка в текущем цикле не прогнозируется.";
         }
 
         private void InitializePermissions()
@@ -516,7 +1159,7 @@ namespace WarehouseVisualizer.ViewModels
             {
                 SelectedMaterial = material;
                 WeakReferenceMessenger.Default.Send(new VmNotificationMessage(
-                    $"Перетащите материал '{material.Name}' на склад"));
+                    $"Материал «{material.Name}» выбран. Нажмите свободную ячейку на карте или перетащите материал drag and drop."));
             }
         }
 
@@ -762,14 +1405,22 @@ namespace WarehouseVisualizer.ViewModels
 
             if (SelectedMaterial != null)
             {
+                if (targetCell.HasMaterial)
+                {
+                    WeakReferenceMessenger.Default.Send(new VmNotificationMessage(
+                        $"Ячейка {targetCell.Location} уже занята. Выберите свободную ячейку или переместите материал drag and drop."));
+                    return;
+                }
+
                 // Добавление нового материала
                 var materialToAdd = (Material)SelectedMaterial.Clone();
                 materialToAdd.Quantity = SelectedQuantity;
                 targetCell.Material = materialToAdd;
+                SelectedCell = targetCell;
 
                 AddHistory("Добавление", targetCell.Location, materialToAdd.Name, materialToAdd.Quantity);
                 WeakReferenceMessenger.Default.Send(new VmNotificationMessage(
-                    $"✅ Добавлен {materialToAdd.Name} в ячейку {targetCell.Location}"));
+                    $"Добавлен {materialToAdd.Name} в ячейку {targetCell.Location}. Можно продолжить размещение или перетащить материал drag and drop."));
 
                 GenerateReport();
                 OnPropertyChanged(nameof(OccupiedCellsCount));
@@ -795,7 +1446,7 @@ namespace WarehouseVisualizer.ViewModels
             target.Material = source.Material;
             source.Material = null;
 
-            AddHistory("Перемещение", target.Location, target.Material!.Name, target.Material.Quantity);
+            AddHistory("Перемещение", target.Location, target.Material!.Name, target.Material.Quantity, source.Location, target.Location);
             WeakReferenceMessenger.Default.Send(new VmNotificationMessage(
                 $"✅ Перемещен {target.Material.Name} в ячейку {target.Location}"));
 
@@ -928,18 +1579,25 @@ namespace WarehouseVisualizer.ViewModels
             return cell?.Material != null && CanEditMaterials;
         }
 
-        private void AddHistory(string action, string location, string materialName, int quantity)
+        private void AddHistory(string action, string location, string materialName, int quantity, string? fromLocation = null, string? toLocation = null)
         {
+            var material = AvailableMaterials.FirstOrDefault(m => m.Name == materialName);
             var item = new MaterialHistoryItem
             {
                 Action = action,
-                Location = location ?? "N/A",
-                MaterialName = materialName ?? "N/A",
+                ActionType = ResolveHistoryActionType(action),
+                MaterialId = material?.Id,
+                Location = location ?? "Н/Д",
+                FromLocation = fromLocation ?? string.Empty,
+                ToLocation = toLocation ?? location ?? "Н/Д",
+                MaterialName = materialName ?? "Н/Д",
                 Quantity = quantity,
-                Timestamp = DateTime.Now
+                Timestamp = DateTime.Now,
+                UserName = CurrentUser?.Username ?? "система"
             };
 
             History.Insert(0, item);
+            ActivityFeed.Insert(0, new ActivityEvent(item.Timestamp, item.UserName, item.ActionType.ToString(), item.MaterialName, item.Location, "Аудит"));
 
             try
             {
@@ -955,6 +1613,34 @@ namespace WarehouseVisualizer.ViewModels
             {
                 History.RemoveAt(History.Count - 1);
             }
+
+            OnPropertyChanged(nameof(DailyOperationsCount));
+            OnPropertyChanged(nameof(MonthlyOperationsCount));
+        }
+
+        private static MaterialHistoryActionType ResolveHistoryActionType(string action)
+        {
+            if (action.Contains("Перемещение", StringComparison.OrdinalIgnoreCase))
+            {
+                return MaterialHistoryActionType.Moved;
+            }
+
+            if (action.Contains("Удал", StringComparison.OrdinalIgnoreCase))
+            {
+                return MaterialHistoryActionType.Deleted;
+            }
+
+            if (action.Contains("Редакт", StringComparison.OrdinalIgnoreCase))
+            {
+                return MaterialHistoryActionType.Updated;
+            }
+
+            if (action.Contains("Созд", StringComparison.OrdinalIgnoreCase) || action.Contains("Добав", StringComparison.OrdinalIgnoreCase))
+            {
+                return MaterialHistoryActionType.Created;
+            }
+
+            return MaterialHistoryActionType.Updated;
         }
 
         private void GenerateReport()
@@ -1011,6 +1697,11 @@ namespace WarehouseVisualizer.ViewModels
             }
 
             WarehouseReport = report;
+            OnPropertyChanged(nameof(FreeCellsCount));
+            OnPropertyChanged(nameof(LowStockMaterialsCount));
+            OnPropertyChanged(nameof(DailyOperationsCount));
+            OnPropertyChanged(nameof(MonthlyOperationsCount));
+            UpdateForecast();
             WeakReferenceMessenger.Default.Send(new VmNotificationMessage("📊 Отчет обновлен"));
         }
 
@@ -1350,5 +2041,36 @@ namespace WarehouseVisualizer.ViewModels
         {
             Value = value;
         }
+    }
+
+    public class ActivityEvent
+    {
+        public ActivityEvent(DateTime timestamp, string userName, string action, string target, string location, string severity)
+        {
+            Timestamp = timestamp;
+            UserName = userName;
+            Action = action;
+            Target = target;
+            Location = location;
+            Severity = severity;
+        }
+
+        public DateTime Timestamp { get; }
+        public string UserName { get; }
+        public string Action { get; }
+        public string Target { get; }
+        public string Location { get; }
+        public string Severity { get; }
+        public string Details => $"{Timestamp:HH:mm:ss}  {UserName}  {Action}  {Target}  {Location}";
+    }
+
+    public class QrPixel
+    {
+        public QrPixel(bool isDark)
+        {
+            IsDark = isDark;
+        }
+
+        public bool IsDark { get; }
     }
 }

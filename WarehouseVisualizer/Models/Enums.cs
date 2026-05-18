@@ -25,6 +25,41 @@
         Info,
         Warning,
         Error,
-        Success
+        Success,
+        LowStock,
+        WarehouseFull,
+        MaterialMoved,
+        UnauthorizedActionAttempt,
+        ReportGenerated,
+        BackupCompleted,
+        PlacementSuggestion,
+        SystemWarning
+    }
+
+    public enum NotificationPriority
+    {
+        Low,
+        Medium,
+        High,
+        Critical
+    }
+
+    public enum MaterialHistoryActionType
+    {
+        Created,
+        Updated,
+        Moved,
+        Deleted,
+        QuantityChanged,
+        Assigned,
+        Restored
+    }
+
+    public enum MaterialStatus
+    {
+        Active,
+        Reserved,
+        Archived,
+        Damaged
     }
 }
