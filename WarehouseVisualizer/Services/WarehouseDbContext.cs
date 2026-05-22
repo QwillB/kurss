@@ -104,6 +104,42 @@ namespace WarehouseVisualizer.Services
         public void EnsureDiplomaSchema()
         {
             Database.ExecuteSqlRaw("""
+                IF OBJECT_ID('OperationHistory', 'U') IS NULL
+                BEGIN
+                    CREATE TABLE [OperationHistory] (
+                        [Id] int NOT NULL IDENTITY,
+                        [Timestamp] datetime2 NOT NULL,
+                        [Action] nvarchar(50) NOT NULL,
+                        [Location] nvarchar(20) NOT NULL,
+                        [MaterialName] nvarchar(100) NOT NULL,
+                        [Quantity] int NOT NULL,
+                        CONSTRAINT [PK_OperationHistory] PRIMARY KEY ([Id])
+                    );
+                END
+                """);
+
+            Database.ExecuteSqlRaw("""
+                IF OBJECT_ID('Users', 'U') IS NULL
+                BEGIN
+                    CREATE TABLE [Users] (
+                        [Id] int NOT NULL IDENTITY,
+                        [Username] nvarchar(50) NOT NULL,
+                        [PasswordHash] nvarchar(256) NOT NULL,
+                        [Role] int NOT NULL,
+                        [FullName] nvarchar(100) NOT NULL,
+                        [IsActive] bit NOT NULL,
+                        [CreatedAt] datetime2 NOT NULL,
+                        CONSTRAINT [PK_Users] PRIMARY KEY ([Id])
+                    );
+                END
+                """);
+
+            Database.ExecuteSqlRaw("""
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Users_Username' AND object_id = OBJECT_ID('Users'))
+                    CREATE UNIQUE INDEX [IX_Users_Username] ON [Users] ([Username]);
+                """);
+
+            Database.ExecuteSqlRaw("""
                 IF COL_LENGTH('Materials', 'CreatedAt') IS NULL
                     ALTER TABLE [Materials] ADD [CreatedAt] datetime2 NOT NULL CONSTRAINT [DF_Materials_CreatedAt] DEFAULT GETDATE();
                 """);

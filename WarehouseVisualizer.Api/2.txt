@@ -1,0 +1,5 @@
+{
+  "ConnectionStrings": {
+    "WarehouseDb": "Server=ИМЯ_СЕРВЕРА;Database=WarehouseDB;User Id=ЛОГИН;Password=ПАРОЛЬ;TrustServerCertificate=True;Encrypt=False"
+  }
+}

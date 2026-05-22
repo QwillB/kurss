@@ -16,7 +16,6 @@
         <conv:MaterialTypeToBrushConverter x:Key="MaterialTypeToBrushConverter"/>
         <conv:StringEqualsToVisibilityConverter x:Key="PageVisibilityConverter"/>
         <conv:CellOverlayBrushConverter x:Key="CellOverlayBrushConverter"/>
-        <conv:QrPixelBrushConverter x:Key="QrPixelBrushConverter"/>
         <conv:NotificationPriorityBrushConverter x:Key="NotificationPriorityBrushConverter"/>
         <conv:EnumRussianNameConverter x:Key="EnumRussianNameConverter"/>
 
@@ -24,7 +23,7 @@
             <MenuItem Header="Редактировать" Command="{Binding DataContext.EditCellCommand, Source={x:Reference mainWindow}}" CommandParameter="{Binding}" IsEnabled="{Binding HasMaterial}"/>
             <MenuItem Header="Очистить" Command="{Binding DataContext.ClearCellCommand, Source={x:Reference mainWindow}}" CommandParameter="{Binding}" IsEnabled="{Binding HasMaterial}"/>
             <Separator/>
-            <MenuItem Header="История" Command="{Binding DataContext.NavigateCommand, Source={x:Reference mainWindow}}" CommandParameter="Журнал аудита"/>
+            <MenuItem Header="История" Command="{Binding DataContext.NavigateCommand, Source={x:Reference mainWindow}}" CommandParameter="Аналитика и аудит" IsEnabled="{Binding DataContext.CanViewAudit, Source={x:Reference mainWindow}}"/>
             <MenuItem Header="Авторазмещение" Command="{Binding DataContext.FindBestCellCommand, Source={x:Reference mainWindow}}"/>
         </ContextMenu>
 
@@ -92,13 +91,10 @@
                     <Button Content="Карта склада" Command="{Binding NavigateCommand}" CommandParameter="Карта склада" Style="{StaticResource SidebarButton}"/>
                     <Button Content="Панель управления" Command="{Binding NavigateCommand}" CommandParameter="Панель управления" Style="{StaticResource SidebarButton}"/>
                     <Button Content="Материалы" Command="{Binding NavigateCommand}" CommandParameter="Материалы" Style="{StaticResource SidebarButton}"/>
-                    <Button Content="Отчёты" Command="{Binding NavigateCommand}" CommandParameter="Отчёты" Style="{StaticResource SidebarButton}"/>
+                    <Button Content="Отчёты" Command="{Binding NavigateCommand}" CommandParameter="Отчёты" Style="{StaticResource SidebarButton}" Visibility="{Binding CanViewReports, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                     <Button Content="Уведомления" Command="{Binding NavigateCommand}" CommandParameter="Уведомления" Style="{StaticResource SidebarButton}"/>
-                    <Button Content="Журнал аудита" Command="{Binding NavigateCommand}" CommandParameter="Журнал аудита" Style="{StaticResource SidebarButton}"/>
-                    <Button Content="Аналитика" Command="{Binding NavigateCommand}" CommandParameter="Аналитика" Style="{StaticResource SidebarButton}"/>
-                    <Button Content="Авторазмещение" Command="{Binding NavigateCommand}" CommandParameter="Авторазмещение" Style="{StaticResource SidebarButton}"/>
-                    <Button Content="Монитор активности" Command="{Binding NavigateCommand}" CommandParameter="Монитор активности" Style="{StaticResource SidebarButton}"/>
-                    <Button Content="Настройки" Command="{Binding NavigateCommand}" CommandParameter="Настройки" Style="{StaticResource SidebarButton}"/>
+                    <Button Content="Аналитика и аудит" Command="{Binding NavigateCommand}" CommandParameter="Аналитика и аудит" Style="{StaticResource SidebarButton}" Visibility="{Binding CanViewAudit, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <Button Content="Настройки" Command="{Binding NavigateCommand}" CommandParameter="Настройки" Style="{StaticResource SidebarButton}" Visibility="{Binding CanViewSettings, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom">
@@ -137,6 +133,17 @@
                         <Border Background="#172033" BorderBrush="#27364F" BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,10,0">
                             <TextBlock Text="{Binding UnreadNotificationsCount, StringFormat='Уведомления {0}'}" Foreground="{StaticResource EnterpriseAmberBrush}" FontWeight="SemiBold"/>
                         </Border>
+                        <StackPanel Orientation="Horizontal"
+                                    Visibility="{Binding CanEditMaterials, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Button Content="Сохранить"
+                                    Command="{Binding SaveDataCommand}"
+                                    Style="{StaticResource EnterpriseButton}"
+                                    ToolTip="Сохранить карту склада и материалы в базе данных"/>
+                            <Button Content="Загрузить"
+                                    Command="{Binding LoadDataCommand}"
+                                    Style="{StaticResource EnterpriseOutlineButton}"
+                                    ToolTip="Загрузить склад из базы данных"/>
+                        </StackPanel>
                         <Button Content="Создать демо-данные" Command="{Binding GenerateDemoDataCommand}" Style="{StaticResource EnterpriseButton}"/>
                     </StackPanel>
                 </Grid>
@@ -252,7 +259,7 @@
                                     <TextBlock Text="{Binding DetailsMaterial.Quantity, StringFormat='Количество: {0}'}" Foreground="{StaticResource EnterpriseMutedTextBrush}"/>
                                     <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                                         <Button Content="Редактировать" Command="{Binding EditCellCommand}" CommandParameter="{Binding SelectedCell}" Style="{StaticResource EnterpriseOutlineButton}"/>
-                                        <Button Content="История" Command="{Binding NavigateCommand}" CommandParameter="Журнал аудита" Style="{StaticResource EnterpriseOutlineButton}"/>
+                                        <Button Content="История" Command="{Binding NavigateCommand}" CommandParameter="Аналитика и аудит" Style="{StaticResource EnterpriseOutlineButton}" Visibility="{Binding CanViewAudit, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                         <Button Content="Показать QR" Command="{Binding GenerateQrCommand}" Style="{StaticResource EnterpriseOutlineButton}"/>
                                     </StackPanel>
                                 </StackPanel>
@@ -275,18 +282,9 @@
                             <Border Style="{StaticResource EnterpriseCard}">
                                 <StackPanel>
                                     <TextBlock Text="Предпросмотр QR-этикетки" Style="{StaticResource SectionTitleText}"/>
-                                    <ItemsControl ItemsSource="{Binding SelectedQrPixels}" Margin="0,10,0,0">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <UniformGrid Columns="15"/>
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Border Width="8" Height="8" Background="{Binding IsDark, Converter={StaticResource QrPixelBrushConverter}}"/>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+                                    <Border Background="White" CornerRadius="8" Padding="10" Margin="0,10,0,0" HorizontalAlignment="Left">
+                                        <Image Source="{Binding SelectedQrImage}" Width="170" Height="170" Stretch="Uniform"/>
+                                    </Border>
                                     <TextBlock Text="{Binding SelectedQrCodeText}" Foreground="{StaticResource EnterpriseMutedTextBrush}" Margin="0,8,0,0"/>
                                     <Button Content="Обновить QR" Command="{Binding GenerateQrCommand}" Style="{StaticResource EnterpriseOutlineButton}" Margin="0,8,0,0"/>
                                 </StackPanel>
@@ -386,11 +384,28 @@
                         <Border Style="{StaticResource EnterpriseCard}">
                             <StackPanel>
                                 <TextBlock Text="Центр отчётов" Style="{StaticResource PageTitleText}"/>
+                                <TextBlock Text="Отчёты и обмен данными доступны администратору и аудитору." Style="{StaticResource MutedText}" Margin="0,4,0,0"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
-                                    <Button Content="Экспорт отчёта" Command="{Binding ExportReportCommand}" Style="{StaticResource EnterpriseButton}"/>
-                                    <Button Content="Экспорт материалов" Command="{Binding ExportMaterialsCommand}" Style="{StaticResource EnterpriseOutlineButton}"/>
-                                    <Button Content="Импорт материалов" Command="{Binding ImportMaterialsCommand}" Style="{StaticResource EnterpriseOutlineButton}"/>
-                                    <Button Content="Создать шаблон" Command="{Binding CreateTemplateCommand}" Style="{StaticResource EnterpriseOutlineButton}"/>
+                                    <Button Content="Отчёт"
+                                            Command="{Binding ExportReportCommand}"
+                                            Style="{StaticResource EnterpriseButton}"
+                                            ToolTip="Экспорт отчёта склада в Excel"
+                                            Visibility="{Binding CanExportReports, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                    <Button Content="Экспорт"
+                                            Command="{Binding ExportMaterialsCommand}"
+                                            Style="{StaticResource EnterpriseOutlineButton}"
+                                            ToolTip="Экспорт материалов в Excel"
+                                            Visibility="{Binding CanExportMaterialsProp, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                    <Button Content="Импорт"
+                                            Command="{Binding ImportMaterialsCommand}"
+                                            Style="{StaticResource EnterpriseOutlineButton}"
+                                            ToolTip="Импорт материалов из Excel"
+                                            Visibility="{Binding CanImportData, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                    <Button Content="Шаблон"
+                                            Command="{Binding CreateTemplateCommand}"
+                                            Style="{StaticResource EnterpriseOutlineButton}"
+                                            ToolTip="Создать шаблон Excel для импорта"
+                                            Visibility="{Binding CanCreateReports, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                 </StackPanel>
                             </StackPanel>
                         </Border>
@@ -409,87 +424,78 @@
                     </Border>
                 </Grid>
 
-                <Grid Visibility="{Binding ActivePage, Converter={StaticResource PageVisibilityConverter}, ConverterParameter='Журнал аудита'}">
-                    <Border Style="{StaticResource EnterpriseCard}">
-                        <DockPanel>
-                            <TextBlock DockPanel.Dock="Top" Text="Лента аудита" Style="{StaticResource PageTitleText}" Margin="0,0,0,12"/>
-                            <ListView ItemsSource="{Binding History}" Background="Transparent" BorderThickness="0" Foreground="{StaticResource EnterpriseTextBrush}">
-                                <ListView.View>
-                                    <GridView>
-                                        <GridViewColumn Header="Время" DisplayMemberBinding="{Binding Timestamp}" Width="150"/>
-                                        <GridViewColumn Header="Действие" Width="150">
-                                            <GridViewColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <TextBlock Text="{Binding ActionType, Converter={StaticResource EnumRussianNameConverter}}"/>
-                                                </DataTemplate>
-                                            </GridViewColumn.CellTemplate>
-                                        </GridViewColumn>
-                                        <GridViewColumn Header="Материал" DisplayMemberBinding="{Binding MaterialName}" Width="220"/>
-                                        <GridViewColumn Header="Откуда" DisplayMemberBinding="{Binding FromLocation}" Width="90"/>
-                                        <GridViewColumn Header="Куда" DisplayMemberBinding="{Binding ToLocation}" Width="90"/>
-                                        <GridViewColumn Header="Пользователь" DisplayMemberBinding="{Binding UserName}" Width="130"/>
-                                        <GridViewColumn Header="Причина" DisplayMemberBinding="{Binding Reason}" Width="260"/>
-                                    </GridView>
-                                </ListView.View>
-                            </ListView>
-                        </DockPanel>
-                    </Border>
-                </Grid>
-
-                <ScrollViewer Visibility="{Binding ActivePage, Converter={StaticResource PageVisibilityConverter}, ConverterParameter='Аналитика'}">
+                <ScrollViewer Visibility="{Binding ActivePage, Converter={StaticResource PageVisibilityConverter}, ConverterParameter='Аналитика и аудит'}">
                     <StackPanel>
-                        <Border Style="{StaticResource EnterpriseCard}">
+                        <Border Style="{StaticResource EnterpriseCard}" Visibility="{Binding CanManageBackups, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <StackPanel>
-                                <TextBlock Text="Прогноз заполненности" Style="{StaticResource PageTitleText}"/>
-                                <TextBlock Text="{Binding ForecastRiskPercent, StringFormat='Оценка риска: {0}%'}" Foreground="{StaticResource EnterpriseAmberBrush}" FontSize="26" FontWeight="Bold" Margin="0,12,0,0"/>
-                                <ProgressBar Value="{Binding ForecastRiskPercent, Mode=OneWay}" Maximum="100" Height="12"/>
-                                <TextBlock Text="{Binding ForecastMessage}" Foreground="{StaticResource EnterpriseTextBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource EnterpriseCard}">
-                            <StackPanel>
-                                <TextBlock Text="Обзор нескольких складов" Style="{StaticResource SectionTitleText}"/>
-                                <TextBlock Text="Основной склад: текущая карта. Резервный склад: заполненность 42%. Транзитная зона: заполненность 18%." Foreground="{StaticResource EnterpriseMutedTextBrush}" Margin="0,10,0,0"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </ScrollViewer>
-
-                <ScrollViewer Visibility="{Binding ActivePage, Converter={StaticResource PageVisibilityConverter}, ConverterParameter='Авторазмещение'}">
-                    <StackPanel>
-                        <Border Style="{StaticResource EnterpriseCard}">
-                            <StackPanel>
-                                <TextBlock Text="Рабочая область интеллектуального размещения" Style="{StaticResource PageTitleText}"/>
-                                <TextBlock Text="Материал для размещения" Style="{StaticResource MutedText}" Margin="0,12,0,4"/>
-                                <ComboBox ItemsSource="{Binding AvailableMaterials}" SelectedItem="{Binding SelectedMaterial}" DisplayMemberPath="Name" Style="{StaticResource ModernComboBox}" Width="360" HorizontalAlignment="Left"/>
-                                <TextBlock Text="{Binding SmartPlacementReason}" Foreground="{StaticResource EnterpriseTextBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/>
-                                <TextBlock Text="{Binding SmartPlacementScore, StringFormat='Пригодность: {0}%'}" Foreground="{StaticResource EnterpriseGreenBrush}" FontSize="28" FontWeight="Bold" Margin="0,12,0,0"/>
-                                <ProgressBar Value="{Binding SmartPlacementScore, Mode=OneWay}" Maximum="100" Height="14"/>
-                                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
-                                    <Button Content="Найти лучшую ячейку" Command="{Binding FindBestCellCommand}" Style="{StaticResource EnterpriseButton}"/>
-                                    <Button Content="Подтвердить размещение" Command="{Binding ConfirmPlacementCommand}" Style="{StaticResource EnterpriseOutlineButton}"/>
-                                    <Button Content="Найти альтернативу" Command="{Binding FindAlternativeCommand}" Style="{StaticResource EnterpriseOutlineButton}"/>
+                                <TextBlock Text="Активность системы" Style="{StaticResource PageTitleText}"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                    <Button Content="{Binding IsSimulationRunning, StringFormat='Демо-режим: {0}'}" Command="{Binding ToggleSimulationCommand}" Style="{StaticResource EnterpriseButton}"/>
+                                    <TextBlock Text="{Binding SimulationEventsCount, StringFormat='Событий: {0}'}" Foreground="{StaticResource EnterpriseMutedTextBrush}" VerticalAlignment="Center" Margin="16,0"/>
                                 </StackPanel>
+                                <ListBox ItemsSource="{Binding ActivityFeed}" DisplayMemberPath="Details" Height="170" Margin="0,12,0,0" Background="Transparent" BorderThickness="0" Foreground="{StaticResource EnterpriseTextBrush}"/>
                             </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource EnterpriseCard}">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Журнал действий" Style="{StaticResource PageTitleText}" Margin="0,0,0,12"/>
+                                <ListView ItemsSource="{Binding History}" Background="Transparent" BorderThickness="0" Foreground="{StaticResource EnterpriseTextBrush}">
+                                    <ListView.View>
+                                        <GridView>
+                                            <GridViewColumn Header="Время" DisplayMemberBinding="{Binding Timestamp}" Width="150"/>
+                                            <GridViewColumn Header="Действие" Width="150">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding ActionType, Converter={StaticResource EnumRussianNameConverter}}"/>
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                            <GridViewColumn Header="Материал" DisplayMemberBinding="{Binding MaterialName}" Width="220"/>
+                                            <GridViewColumn Header="Откуда" DisplayMemberBinding="{Binding FromLocation}" Width="90"/>
+                                            <GridViewColumn Header="Куда" DisplayMemberBinding="{Binding ToLocation}" Width="90"/>
+                                            <GridViewColumn Header="Пользователь" DisplayMemberBinding="{Binding UserName}" Width="130"/>
+                                            <GridViewColumn Header="Причина" DisplayMemberBinding="{Binding Reason}" Width="260"/>
+                                        </GridView>
+                                    </ListView.View>
+                                </ListView>
+                            </DockPanel>
                         </Border>
                     </StackPanel>
                 </ScrollViewer>
-
-                <Grid Visibility="{Binding ActivePage, Converter={StaticResource PageVisibilityConverter}, ConverterParameter='Монитор активности'}">
-                    <Border Style="{StaticResource EnterpriseCard}">
-                        <DockPanel>
-                            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
-                                <TextBlock Text="Монитор активности в реальном времени" Style="{StaticResource PageTitleText}" Width="390"/>
-                                <Button Content="{Binding IsSimulationRunning, StringFormat='Симуляция активна: {0}'}" Command="{Binding ToggleSimulationCommand}" Style="{StaticResource EnterpriseButton}"/>
-                                <TextBlock Text="{Binding SimulationEventsCount, StringFormat='Событий создано: {0}'}" Foreground="{StaticResource EnterpriseMutedTextBrush}" VerticalAlignment="Center" Margin="16,0"/>
-                            </StackPanel>
-                            <ListBox ItemsSource="{Binding ActivityFeed}" DisplayMemberPath="Details" Background="Transparent" BorderThickness="0" Foreground="{StaticResource EnterpriseTextBrush}"/>
-                        </DockPanel>
-                    </Border>
-                </Grid>
 
                 <ScrollViewer Visibility="{Binding ActivePage, Converter={StaticResource PageVisibilityConverter}, ConverterParameter='Настройки'}">
                     <StackPanel>
+                        <Border Style="{StaticResource EnterpriseCard}" Visibility="{Binding IsAdmin, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock Text="Настройки склада" Style="{StaticResource PageTitleText}"/>
+                                <TextBlock Text="Размер сетки склада. При изменении размера материалы в существующих ячейках сохраняются, если ячейки остаются в пределах новой сетки." Foreground="{StaticResource EnterpriseMutedTextBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                                    <StackPanel Width="150" Margin="0,0,12,0">
+                                        <TextBlock Text="Ряды" Style="{StaticResource MutedText}"/>
+                                        <TextBox Text="{Binding Warehouse.Rows, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="150" Margin="0,0,12,0">
+                                        <TextBlock Text="Колонки" Style="{StaticResource MutedText}"/>
+                                        <TextBox Text="{Binding Warehouse.Columns, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}"/>
+                                    </StackPanel>
+                                    <Button Content="Применить размер" Command="{Binding ApplyWarehouseSettingsCommand}" Style="{StaticResource EnterpriseButton}" VerticalAlignment="Bottom"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource EnterpriseCard}" Visibility="{Binding IsAdmin, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock Text="Управление пользователями" Style="{StaticResource PageTitleText}"/>
+                                <TextBlock Text="Создание пользователей, редактирование ролей и отключение доступа." Foreground="{StaticResource EnterpriseMutedTextBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                <Button Content="Открыть управление пользователями"
+                                        Command="{Binding OpenUserManagementCommand}"
+                                        Style="{StaticResource EnterpriseButton}"
+                                        HorizontalAlignment="Left"
+                                        Margin="0,14,0,0"/>
+                            </StackPanel>
+                        </Border>
+
                         <Border Style="{StaticResource EnterpriseCard}">
                             <StackPanel>
                                 <TextBlock Text="Настройки / Центр резервного копирования" Style="{StaticResource PageTitleText}"/>

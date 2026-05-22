@@ -32,7 +32,16 @@ public sealed class DatabaseInitializer
                 var context = scope.ServiceProvider.GetRequiredService<WarehouseDbContext>();
                 var authService = scope.ServiceProvider.GetRequiredService<IAuthService>();
 
-                await context.Database.MigrateAsync(cancellationToken);
+                if (await TableExistsAsync(context, "Materials", cancellationToken))
+                {
+                    context.EnsureDiplomaSchema();
+                }
+                else
+                {
+                    await context.Database.MigrateAsync(cancellationToken);
+                    context.EnsureDiplomaSchema();
+                }
+
                 await SeedAdminUserAsync(context, authService, cancellationToken);
                 return;
             }
@@ -45,9 +54,32 @@ public sealed class DatabaseInitializer
 
         using var finalScope = _serviceProvider.CreateScope();
         var finalContext = finalScope.ServiceProvider.GetRequiredService<WarehouseDbContext>();
-        await finalContext.Database.MigrateAsync(cancellationToken);
+        if (await TableExistsAsync(finalContext, "Materials", cancellationToken))
+        {
+            finalContext.EnsureDiplomaSchema();
+        }
+        else
+        {
+            await finalContext.Database.MigrateAsync(cancellationToken);
+            finalContext.EnsureDiplomaSchema();
+        }
+
         var finalAuthService = finalScope.ServiceProvider.GetRequiredService<IAuthService>();
         await SeedAdminUserAsync(finalContext, finalAuthService, cancellationToken);
+    }
+
+    private static async Task<bool> TableExistsAsync(WarehouseDbContext context, string tableName, CancellationToken cancellationToken)
+    {
+        if (!string.Equals(tableName, "Materials", StringComparison.Ordinal))
+        {
+            throw new ArgumentOutOfRangeException(nameof(tableName), tableName, "Unsupported table check.");
+        }
+
+        var result = await context.Database
+            .SqlQueryRaw<int>("SELECT CASE WHEN OBJECT_ID(N'[Materials]', N'U') IS NULL THEN 0 ELSE 1 END AS [Value]")
+            .SingleAsync(cancellationToken);
+
+        return result == 1;
     }
 
     private async Task SeedAdminUserAsync(WarehouseDbContext context, IAuthService authService, CancellationToken cancellationToken)
